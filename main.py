@@ -9,6 +9,7 @@ from sqlalchemy.exc import SQLAlchemyError
 import database_models
 import logging
 
+logger = logging.getLogger(__name__)
 
 SEED_PRODUCTS = [
     Product(id=1, name="Product 1", description="Description 1", price=100, quantity=100),
@@ -16,9 +17,7 @@ SEED_PRODUCTS = [
 
 
 def _run_create_all():
-    """Create tables only in local dev. On Vercel do not run DDL; create tables via DB provider or migrations."""
-    if os.environ.get("VERCEL"):
-        return
+    """Create tables if missing (idempotent). Runs on Vercel so /products has a table."""
     try:
         database_models.Base.metadata.create_all(bind=engine)
     except Exception:
@@ -70,19 +69,20 @@ def read_root():
     return 'hello world'
 
     
-@app.get("/products")
+@app.get("/products", response_model=list[Product])
 def get_all_products(db: Session = Depends(get_db)):
-    return db.query(database_models.Product).all()
+    rows = db.query(database_models.Product).all()
+    return [Product.model_validate(r) for r in rows]
 
 
-@app.get("/products/{product_id}")
-def get_product(product_id: int,db:Session = Depends(get_db)):
-    product = db.query(database_models.Product).filter(database_models.Product.id == product_id).first()
-    if product is None:
+@app.get("/products/{product_id}", response_model=Product)
+def get_product(product_id: int, db: Session = Depends(get_db)):
+    row = db.query(database_models.Product).filter(database_models.Product.id == product_id).first()
+    if row is None:
         raise HTTPException(status_code=404, detail="Product not found")
-    return product
+    return Product.model_validate(row)
 
-@app.post("/products")
+@app.post("/products", response_model=Product)
 def create_product(
     product: Product,
     db: Session = Depends(get_db)
@@ -92,20 +92,20 @@ def create_product(
         db.add(db_product)
         db.commit()
         db.refresh(db_product)
-        return db_product
-
-    except SQLAlchemyError as e:
+        return Product.model_validate(db_product)
+    except SQLAlchemyError:
         db.rollback()
         logger.exception("Database error while creating product")
         raise HTTPException(status_code=500, detail="Database error")
 
-    except Exception as e:
+    except Exception:
         db.rollback()
         logger.exception("Unexpected error")
         raise HTTPException(status_code=500, detail="Internal server error")
 
-@app.put("/products/{product_id}")
-def update_product(product_id: int, product: Product, db:Session = Depends(get_db)):
+
+@app.put("/products/{product_id}", response_model=Product)
+def update_product(product_id: int, product: Product, db: Session = Depends(get_db)):
     db_product = db.query(database_models.Product).filter(database_models.Product.id == product_id).first()
     if db_product is None:
         raise HTTPException(status_code=404, detail="Product not found")
@@ -114,7 +114,8 @@ def update_product(product_id: int, product: Product, db:Session = Depends(get_d
     db_product.price = product.price
     db_product.quantity = product.quantity
     db.commit()
-    return db_product
+    db.refresh(db_product)
+    return Product.model_validate(db_product)
 
 
 @app.delete("/products/{product_id}")
