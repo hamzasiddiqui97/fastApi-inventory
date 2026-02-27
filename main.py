@@ -4,10 +4,15 @@ from products import Product
 from database import session, engine
 from sqlalchemy.orm import Session
 import database_models
-
-database_models.Base.metadata.create_all(bind=engine)
+import os
 
 app = FastAPI()
+
+# Initialize database tables on startup if DATABASE_URL is configured
+if os.environ.get("DATABASE_URL"):
+    @app.on_event("startup")
+    def startup():
+        database_models.Base.metadata.create_all(bind=engine)
 
 app.add_middleware(
     CORSMiddleware,
