@@ -1,3 +1,4 @@
+"""Pydantic schemas for Product API."""
 from pydantic import BaseModel, ConfigDict
 
 
@@ -8,5 +9,3 @@ class Product(BaseModel):
     description: str
     price: float
     quantity: int
-
-
