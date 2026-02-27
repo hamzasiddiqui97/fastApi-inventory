@@ -5,7 +5,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from products import Product
 from database import session, engine
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import SQLAlchemyError
 import database_models
+import logging
+
 
 SEED_PRODUCTS = [
     Product(id=1, name="Product 1", description="Description 1", price=100, quantity=100),
@@ -79,13 +82,27 @@ def get_product(product_id: int,db:Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Product not found")
     return product
 
-
 @app.post("/products")
-def create_product(product: Product, db:Session = Depends(get_db)):
-    db.add(database_models.Product(**product.model_dump()))
-    db.commit()
-    return product
+def create_product(
+    product: Product,
+    db: Session = Depends(get_db)
+):
+    try:
+        db_product = database_models.Product(**product.model_dump())
+        db.add(db_product)
+        db.commit()
+        db.refresh(db_product)
+        return db_product
 
+    except SQLAlchemyError as e:
+        db.rollback()
+        logger.exception("Database error while creating product")
+        raise HTTPException(status_code=500, detail="Database error")
+
+    except Exception as e:
+        db.rollback()
+        logger.exception("Unexpected error")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 @app.put("/products/{product_id}")
 def update_product(product_id: int, product: Product, db:Session = Depends(get_db)):
