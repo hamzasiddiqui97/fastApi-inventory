@@ -1,3 +1,5 @@
+import os
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from products import Product
@@ -5,34 +7,51 @@ from database import session, engine
 from sqlalchemy.orm import Session
 import database_models
 
-database_models.Base.metadata.create_all(bind=engine)
-
-app = FastAPI()
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-products = [
+SEED_PRODUCTS = [
     Product(id=1, name="Product 1", description="Description 1", price=100, quantity=100),
 ]
 
 
-def init_db():
-    db = session()
+def _run_create_all():
+    """Create tables only in local dev. On Vercel do not run DDL; create tables via DB provider or migrations."""
+    if os.environ.get("VERCEL"):
+        return
+    try:
+        database_models.Base.metadata.create_all(bind=engine)
+    except Exception:
+        pass
 
-    count = db.query(database_models.Product).count()
-    if count == 0:
-        for product in products:
-            db.add(database_models.Product(**product.model_dump()))
-        db.commit()
-    db.close()
+
+def _seed_if_empty(db: Session):
+    if os.environ.get("SEED_DB") != "1":
+        return
+    if db.query(database_models.Product).count() > 0:
+        return
+    for p in SEED_PRODUCTS:
+        db.add(database_models.Product(**p.model_dump()))
+    db.commit()
 
 
-init_db()
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    _run_create_all()
+    if not os.environ.get("VERCEL"):
+        db = session()
+        try:
+            _seed_if_empty(db)
+        finally:
+            db.close()
+    yield
+
+
+app = FastAPI(lifespan=lifespan)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 def get_db():
@@ -49,12 +68,8 @@ def read_root():
 
     
 @app.get("/products")
-def get_all_products(db:Session = Depends(get_db)):
-
-
-    db = next(get_db())
-    products = db.query(database_models.Product).all()
-    return products
+def get_all_products(db: Session = Depends(get_db)):
+    return db.query(database_models.Product).all()
 
 
 @app.get("/products/{product_id}")
