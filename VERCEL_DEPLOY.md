@@ -20,6 +20,6 @@
 3. **Create the table in Prisma Postgres**  
    The app does not run `create_all` on Vercel. Create the `product` table once (e.g. via Prisma or SQL), or run migrations from your machine with `DATABASE_URL` set to the same URL.
 
-## Why `vercel.json` had `{}`
+## Why `vercel.json` is `{}`
 
-An empty object is valid: Vercel auto-detects the app from `index.py` (or `app.py`). It was left minimal on purpose. You can add `buildCommand` / `installCommand` if you want the build to be explicit (as in the current `vercel.json`).
+An empty object is valid. Vercel auto-detects the app from `index.py` (or `app.py`) and installs Python dependencies itself (using `uv`). Do **not** set `buildCommand` or `installCommand` to `pip install -r requirements.txt`—Vercel’s environment is managed by `uv` and will reject direct `pip install` (PEP 668).
