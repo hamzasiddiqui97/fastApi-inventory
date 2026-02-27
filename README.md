@@ -52,4 +52,7 @@ Products: `http://127.0.0.1:8000/products`
 
 ## Deploy (Vercel)
 
-Push to the connected repo; Vercel builds and runs `index.py`. See `docs/VERCEL_DEPLOY.md`.
+- **Root (/)** serves the React frontend (built from `frontend/`).
+- **API** is at **/api** (e.g. `/api/products`, `/api/docs`). Handled by `api/index.py` (FastAPI app mounted at `/api`).
+
+Push to the connected repo. Ensure Vercel uses the repo root and the build runs the frontend; see `docs/VERCEL_DEPLOY.md`. If the dashboard shows only the API at root, set Framework to **Other** and set Build Command to `cd frontend && npm install && npm run build`, Output Directory to `frontend/build`.

@@ -1,15 +1,20 @@
 # Vercel deployment
 
+## Root = frontend, API = /api
+
+- **Root (/)**: Serves the React app from `frontend/build` (built by `buildCommand` in `vercel.json`).
+- **API (/api)**: Handled by `api/index.py`, which mounts the FastAPI app at `/api`. So use `/api/products`, `/api/docs`, etc.
+
 ## Environment variables
 
-- **DATABASE_URL**: PostgreSQL connection string (e.g. from Prisma Postgres). Set in Vercel → Project → Settings → Environment Variables for Production (and Preview if needed).
-- Do not set `buildCommand`/`installCommand` to `pip install`; Vercel uses `uv` (PEP 668).
+- **DATABASE_URL**: PostgreSQL connection string. Set in Vercel → Project → Settings → Environment Variables (Production / Preview).
+- Do not set `installCommand` to `pip install`; Vercel uses `uv` (PEP 668).
 
-## Entrypoint
+## Build
 
-- Vercel runs `index.py`, which exports `app` from `app.main`.
-- The app lives under `app/`; dependencies are installed from `requirements.txt` automatically.
+- `vercel.json` sets `buildCommand` to build the frontend (`cd frontend && npm install && npm run build`) and `outputDirectory` to `frontend/build`.
+- The Python API is in `api/index.py`; Vercel installs dependencies and runs it for requests to `/api/*`.
 
 ## Tables
 
-- The app runs `create_all` at startup (lifespan), so the `product` table is created if missing. No separate migration step required for this project.
+- The app runs `create_all` at startup (lifespan), so the `product` table is created if missing.
