@@ -1,0 +1,23 @@
+# Activate venv first (so sqlalchemy etc. are found), then start server from project folder
+# PowerShell, from project folder:
+.\fastenv\Scripts\Activate.ps1
+python -m uvicorn main:app --reload
+
+# If port 8000 is in use (e.g. 404 on /products): free it then restart server
+# 1) Find process(es) on port 8000
+netstat -ano | findstr :8000
+# 2) Kill by PID (replace <PID> with the number from the last column, e.g. 23956)
+taskkill /PID <PID> /F
+# 3) If multiple PIDs listed, run taskkill for each, then start server again
+
+# GET root
+Invoke-RestMethod -Uri "http://127.0.0.1:8000/" -Method GET
+
+# POST create item (then get by index)
+Invoke-RestMethod -Uri "http://127.0.0.1:8000/items?item=apple" -Method POST -ContentType "application/json"
+Invoke-RestMethod -Uri "http://127.0.0.1:8000/items/0" -Method GET
+
+# Optional: use curl.exe (Unix-style) if available
+curl.exe -X GET "http://127.0.0.1:8000/"
+curl.exe -X POST -H "Content-Type: application/json" "http://127.0.0.1:8000/items?item=apple"
+curl.exe -X GET "http://127.0.0.1:8000/items/0"
