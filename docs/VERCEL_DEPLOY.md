@@ -18,3 +18,8 @@
 ## Tables
 
 - The app runs `create_all` at startup (lifespan), so the `product` table is created if missing.
+
+## If you get 404 on /api/products
+
+1. In Vercel → Project → **Settings** → **General**, set **Root Directory** to **.** (leave empty or `.`) so the repo root is used. If Root Directory is `frontend`, the `api/` folder is not seen and the API is not deployed.
+2. Confirm `api/index.py` exists at the repo root (same level as `app/`, `frontend/`) and is committed.

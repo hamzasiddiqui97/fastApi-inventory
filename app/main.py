@@ -1,9 +1,7 @@
 """FastAPI application: lifespan, middleware, router registration."""
-import os
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 
 from app.api import products_router
 from app.core.config import is_vercel, seed_db_enabled
@@ -54,11 +52,7 @@ app.add_middleware(
 )
 app.include_router(products_router, prefix="/products", tags=["products"])
 
-# Serve frontend build at root (so / shows React app; API stays at /products)
-_frontend_dir = os.path.join(os.path.dirname(__file__), "..", "frontend", "build")
-if os.path.isdir(_frontend_dir):
-    app.mount("/", StaticFiles(directory=_frontend_dir, html=True), name="frontend")
-else:
-    @app.get("/")
-    def read_root():
-        return "hello world"
+
+@app.get("/")
+def read_root():
+    return "ok"
